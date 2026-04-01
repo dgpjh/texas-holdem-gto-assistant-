@@ -1,0 +1,2002 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>德州扑克GTO助手 - Premium Edition v9</title>
+    <style>
+        /* ========== 全局基础样式 ========== */
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        :root {
+            /* 主题色彩 */
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            --danger-gradient: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+            --warning-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            
+            /* 背景色 */
+            --bg-primary: #0a0e27;
+            --bg-secondary: #151932;
+            --bg-tertiary: #1e2139;
+            
+            /* 扑克桌色彩 */
+            --table-felt: linear-gradient(135deg, #0d4d3c 0%, #1a7360 50%, #0d4d3c 100%);
+            --table-border: #8b4513;
+            
+            /* 透明度层级 */
+            --glass-light: rgba(255, 255, 255, 0.1);
+            --glass-medium: rgba(255, 255, 255, 0.15);
+            --glass-heavy: rgba(255, 255, 255, 0.2);
+            
+            /* 阴影 */
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.15);
+            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.2);
+            --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.3);
+            --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.4);
+            
+            /* 动画时长 */
+            --transition-fast: 0.15s;
+            --transition-normal: 0.3s;
+            --transition-slow: 0.5s;
+        }
+        
+        html {
+            font-size: 16px;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: var(--bg-primary);
+            background-image: 
+                radial-gradient(circle at 20% 50%, rgba(102, 126, 234, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(118, 75, 162, 0.1) 0%, transparent 50%);
+            min-height: 100vh;
+            padding: 10px;
+            color: white;
+            overflow-x: hidden;
+        }
+        
+        /* ========== Tab 导航 ========== */
+        .tab-navigation {
+            max-width: 1600px;
+            margin: 0 auto 20px;
+            display: flex;
+            gap: 12px;
+            background: var(--glass-light);
+            backdrop-filter: blur(20px);
+            padding: 12px;
+            border-radius: 16px;
+            border: 1px solid var(--glass-medium);
+        }
+        
+        .tab-btn {
+            flex: 1;
+            padding: 14px 20px;
+            background: transparent;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all var(--transition-normal);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .tab-btn:hover {
+            border-color: rgba(102, 126, 234, 0.6);
+            color: white;
+        }
+        
+        .tab-btn.active {
+            background: var(--primary-gradient);
+            border-color: #764ba2;
+            color: white;
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* ========== 容器布局 ========== */
+        .container { 
+            max-width: 1600px; 
+            margin: 0 auto; 
+        }
+        
+        header { 
+            text-align: center; 
+            margin-bottom: 30px;
+            animation: fadeInDown 0.6s ease-out;
+        }
+        
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        header h1 {
+            font-size: clamp(28px, 5vw, 42px);
+            font-weight: 800;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+        
+        header p {
+            font-size: clamp(14px, 2vw, 16px);
+            color: rgba(255, 255, 255, 0.6);
+            font-weight: 400;
+        }
+        
+        .main-grid { 
+            display: grid; 
+            grid-template-columns: 1fr 420px; 
+            gap: 20px;
+            animation: fadeIn 0.8s ease-out 0.2s both;
+        }
+        
+        @media (max-width: 1200px) { 
+            .main-grid { 
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+        }
+        
+        /* ========== 玻璃态卡片 ========== */
+        .glass-card {
+            background: var(--glass-light);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: clamp(16px, 3vw, 28px);
+            border: 1px solid var(--glass-medium);
+            box-shadow: var(--shadow-lg);
+            transition: all var(--transition-normal);
+        }
+        
+        .glass-card:hover {
+            border-color: var(--glass-heavy);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-xl);
+        }
+        
+        /* ========== GTO 教学页面 ========== */
+        .gto-intro {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        .gto-section {
+            margin-bottom: 40px;
+        }
+        
+        .gto-section h2 {
+            font-size: clamp(22px, 4vw, 28px);
+            color: #667eea;
+            margin-bottom: 20px;
+            font-weight: 800;
+        }
+        
+        .gto-section h3 {
+            font-size: clamp(18px, 3vw, 22px);
+            color: #ffd700;
+            margin: 24px 0 16px;
+            font-weight: 700;
+        }
+        
+        .gto-section p {
+            font-size: clamp(14px, 2vw, 16px);
+            line-height: 1.8;
+            color: rgba(255, 255, 255, 0.85);
+            margin-bottom: 16px;
+        }
+        
+        .gto-section ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .gto-section li {
+            font-size: clamp(14px, 2vw, 16px);
+            line-height: 1.8;
+            color: rgba(255, 255, 255, 0.85);
+            margin-bottom: 12px;
+            padding-left: 28px;
+            position: relative;
+        }
+        
+        .gto-section li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: #38ef7d;
+            font-weight: 700;
+        }
+        
+        .chart-container {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 16px;
+            padding: 24px;
+            margin: 24px 0;
+            border: 2px solid rgba(102, 126, 234, 0.3);
+        }
+        
+        .chart-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+            gap: 16px;
+        }
+        
+        .chart-label {
+            min-width: 140px;
+            font-weight: 700;
+            font-size: clamp(13px, 2vw, 15px);
+            color: #ffd700;
+        }
+        
+        .chart-bar {
+            flex: 1;
+            height: 32px;
+            background: var(--glass-light);
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .chart-fill {
+            height: 100%;
+            background: var(--primary-gradient);
+            border-radius: 8px;
+            transition: width 1s ease-out;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 12px;
+            font-weight: 700;
+            font-size: 13px;
+        }
+        
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 24px 0;
+        }
+        
+        .comparison-card {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 16px;
+            padding: 24px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+            transition: all var(--transition-normal);
+        }
+        
+        .comparison-card:hover {
+            border-color: rgba(102, 126, 234, 0.5);
+            transform: translateY(-4px);
+        }
+        
+        .comparison-card h4 {
+            font-size: clamp(16px, 3vw, 20px);
+            color: #ffd700;
+            margin-bottom: 12px;
+            font-weight: 700;
+        }
+        
+        .comparison-card p {
+            font-size: clamp(13px, 2vw, 14px);
+            line-height: 1.6;
+            margin-bottom: 0;
+        }
+        
+        /* ========== 扑克桌区域 ========== */
+        .table-area {
+            position: relative;
+        }
+        
+        .poker-table {
+            position: relative; 
+            width: 100%; 
+            padding-bottom: 62%;
+            background: var(--table-felt);
+            border-radius: 50%; 
+            border: clamp(12px, 2vw, 18px) solid var(--table-border);
+            box-shadow: 
+                inset 0 0 60px rgba(0, 0, 0, 0.6),
+                0 20px 60px rgba(0, 0, 0, 0.5),
+                0 0 0 3px rgba(139, 69, 19, 0.5);
+            overflow: hidden;
+        }
+        
+        .poker-table::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 85%;
+            height: 85%;
+            border: 2px dashed rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        
+        .poker-table::after {
+            content: '🎲 GTO TABLE';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: clamp(11px, 2vw, 14px);
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.15);
+            letter-spacing: 2px;
+            pointer-events: none;
+        }
+        
+        /* ========== 座位样式 ========== */
+        .seat { 
+            position: absolute; 
+            width: clamp(90px, 15vw, 110px);
+            z-index: 10;
+        }
+        
+        .seat-content {
+            background: linear-gradient(145deg, rgba(30, 33, 57, 0.95), rgba(15, 17, 35, 0.95));
+            backdrop-filter: blur(10px);
+            border-radius: 12px; 
+            padding: clamp(8px, 2vw, 12px);
+            border: 2px solid rgba(102, 126, 234, 0.3);
+            cursor: pointer; 
+            transition: all var(--transition-normal);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .seat:hover .seat-content { 
+            border-color: rgba(102, 126, 234, 0.8);
+            transform: scale(1.08);
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .seat.active .seat-content {
+            background: var(--primary-gradient);
+            border-color: #ffd700;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.4); }
+            50% { box-shadow: 0 0 30px rgba(255, 215, 0, 0.6); }
+        }
+        
+        .seat.has-action .seat-content { 
+            border-color: #f45c43; 
+            background: linear-gradient(145deg, rgba(231, 76, 60, 0.3), rgba(192, 57, 43, 0.3));
+        }
+        
+        .seat-position { 
+            font-size: clamp(12px, 2vw, 14px); 
+            font-weight: 700; 
+            color: #ffd700; 
+            text-align: center;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .seat-action { 
+            font-size: clamp(10px, 1.5vw, 12px); 
+            color: rgba(255, 255, 255, 0.85); 
+            text-align: center; 
+            margin-top: 6px;
+            font-weight: 500;
+        }
+        
+        /* ========== 控制面板 ========== */
+        .control-panel { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 16px; 
+        }
+        
+        .panel-section { 
+            padding: 0;
+        }
+        
+        .panel-section h3 { 
+            margin-bottom: 16px; 
+            color: #667eea; 
+            font-size: clamp(13px, 2vw, 15px);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        /* ========== 玩家数量选择器 ========== */
+        .player-count-selector { 
+            display: flex; 
+            gap: 8px; 
+            flex-wrap: wrap; 
+        }
+        
+        .player-count-btn {
+            width: clamp(45px, 8vw, 50px); 
+            height: clamp(45px, 8vw, 50px); 
+            border-radius: 12px;
+            border: 2px solid rgba(102, 126, 234, 0.4); 
+            background: var(--glass-light);
+            backdrop-filter: blur(10px);
+            color: white; 
+            cursor: pointer; 
+            transition: all var(--transition-normal);
+            font-size: clamp(16px, 3vw, 18px); 
+            font-weight: 700;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .player-count-btn:hover { 
+            transform: scale(1.1) rotate(5deg); 
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
+            border-color: rgba(102, 126, 234, 0.8);
+        }
+        
+        .player-count-btn.active { 
+            background: var(--primary-gradient);
+            border-color: #764ba2;
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.6);
+        }
+        
+        /* ========== 筹码输入 ========== */
+        .stack-input-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 16px;
+            padding: clamp(10px, 2vw, 14px);
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+        
+        .stack-input-row label {
+            font-size: clamp(13px, 2vw, 14px);
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: 600;
+            min-width: 70px;
+        }
+        
+        .stack-input {
+            flex: 1;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 2px solid rgba(102, 126, 234, 0.5);
+            background: rgba(0, 0, 0, 0.4);
+            color: white;
+            text-align: center;
+            font-size: clamp(14px, 2vw, 16px);
+            font-weight: 600;
+            transition: all var(--transition-normal);
+        }
+        
+        .stack-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+        
+        /* ========== 快速手牌选择 ========== */
+        .hand-display {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: clamp(16px, 3vw, 20px);
+            margin: 12px 0;
+            background: linear-gradient(145deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
+            border-radius: 14px;
+            border: 2px solid rgba(102, 126, 234, 0.3);
+            min-height: clamp(70px, 12vw, 80px);
+            cursor: pointer;
+            transition: all var(--transition-normal);
+        }
+        
+        .hand-display:hover {
+            border-color: rgba(102, 126, 234, 0.6);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+        }
+        
+        .hand-display.selected {
+            border-color: #667eea;
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
+        }
+        
+        .hand-notation {
+            font-size: clamp(28px, 6vw, 36px);
+            font-weight: 800;
+            color: white;
+            letter-spacing: 2px;
+        }
+        
+        .hand-notation.empty {
+            font-size: clamp(14px, 3vw, 18px);
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.5);
+            text-align: center;
+        }
+        
+        /* ========== 手牌选择器网格 ========== */
+        .hand-selector-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.92);
+            backdrop-filter: blur(10px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            animation: fadeIn 0.3s ease-out;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        .hand-selector-overlay.active {
+            display: flex;
+        }
+        
+        .hand-selector {
+            background: linear-gradient(145deg, rgba(30, 33, 57, 0.98), rgba(15, 17, 35, 0.98));
+            border-radius: 24px;
+            padding: clamp(20px, 4vw, 36px);
+            max-width: 900px;
+            width: 95%;
+            border: 2px solid rgba(102, 126, 234, 0.5);
+            box-shadow: var(--shadow-xl);
+            animation: scaleIn 0.3s ease-out;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        @keyframes scaleIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        
+        .hand-selector h3 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #667eea;
+            font-size: clamp(20px, 4vw, 24px);
+            font-weight: 800;
+        }
+        
+        .hand-selector-hint {
+            text-align: center;
+            margin-bottom: 16px;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: clamp(12px, 2vw, 14px);
+        }
+        
+        /* 手牌矩阵网格 */
+        .hand-matrix {
+            display: grid;
+            grid-template-columns: repeat(13, 1fr);
+            gap: clamp(3px, 0.5vw, 6px);
+            margin-bottom: 20px;
+        }
+        
+        .hand-cell {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--glass-light);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: clamp(6px, 1vw, 8px);
+            font-size: clamp(10px, 1.5vw, 13px);
+            font-weight: 700;
+            cursor: pointer;
+            transition: all var(--transition-normal);
+            position: relative;
+        }
+        
+        .hand-cell:hover {
+            transform: scale(1.1);
+            border-color: #667eea;
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+            z-index: 10;
+        }
+        
+        .hand-cell.selected {
+            background: var(--primary-gradient);
+            border-color: #764ba2;
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.6);
+        }
+        
+        /* 对子 (对角线) */
+        .hand-cell.pair {
+            background: linear-gradient(135deg, rgba(231, 76, 60, 0.3), rgba(192, 57, 43, 0.3));
+        }
+        
+        /* 同花 (左上) */
+        .hand-cell.suited {
+            background: linear-gradient(135deg, rgba(52, 152, 219, 0.3), rgba(41, 128, 185, 0.3));
+        }
+        
+        /* 异花 (右下) */
+        .hand-cell.offsuit {
+            background: linear-gradient(135deg, rgba(149, 165, 166, 0.3), rgba(127, 140, 141, 0.3));
+        }
+        
+        .hand-cell-label {
+            font-size: clamp(9px, 1.5vw, 11px);
+            font-weight: 600;
+        }
+        
+        /* ========== 搜索框 ========== */
+        .hand-search {
+            margin-bottom: 16px;
+        }
+        
+        .hand-search input {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 2px solid rgba(102, 126, 234, 0.4);
+            background: rgba(0, 0, 0, 0.4);
+            color: white;
+            font-size: clamp(14px, 2vw, 16px);
+            font-weight: 600;
+            text-align: center;
+            transition: all var(--transition-normal);
+        }
+        
+        .hand-search input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+        
+        .hand-search input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+        
+        /* ========== 行动记录器 ========== */
+        .action-recorder { 
+            max-height: 300px; 
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+        
+        .action-recorder::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .action-recorder::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+        }
+        
+        .action-recorder::-webkit-scrollbar-thumb {
+            background: var(--primary-gradient);
+            border-radius: 10px;
+        }
+        
+        .action-row {
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            margin-bottom: 12px;
+            padding: clamp(8px, 2vw, 12px); 
+            background: rgba(0, 0, 0, 0.4); 
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all var(--transition-normal);
+        }
+        
+        .action-row:hover {
+            background: rgba(0, 0, 0, 0.5);
+            border-color: rgba(102, 126, 234, 0.3);
+        }
+        
+        .position-label { 
+            min-width: 60px; 
+            font-weight: 700; 
+            color: #ffd700; 
+            font-size: clamp(11px, 2vw, 13px);
+            text-align: center;
+            padding: 6px 8px;
+            background: rgba(255, 215, 0, 0.1);
+            border-radius: 6px;
+        }
+        
+        .action-buttons { 
+            display: flex; 
+            gap: 6px; 
+            flex: 1; 
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .action-btn {
+            flex: 1; 
+            min-width: 50px;
+            padding: clamp(6px, 1.5vw, 8px); 
+            border-radius: 8px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            background: var(--glass-light);
+            backdrop-filter: blur(10px);
+            color: white; 
+            cursor: pointer; 
+            transition: all var(--transition-normal); 
+            font-size: clamp(10px, 1.5vw, 11px);
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .action-btn:hover { 
+            border-color: #667eea; 
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        
+        .action-btn.active { 
+            background: var(--primary-gradient);
+            border-color: #764ba2;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .action-btn.fold-btn.active { 
+            background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+        }
+        
+        .action-btn.call-btn.active { 
+            background: linear-gradient(135deg, #3498db, #2980b9);
+        }
+        
+        .action-btn.raise-btn.active { 
+            background: var(--danger-gradient);
+        }
+        
+        .raise-input {
+            width: clamp(50px, 10vw, 55px); 
+            padding: 6px; 
+            border-radius: 6px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            background: rgba(0, 0, 0, 0.4); 
+            color: white;
+            text-align: center; 
+            font-size: clamp(11px, 2vw, 12px);
+            font-weight: 600;
+            transition: all var(--transition-normal);
+        }
+        
+        .raise-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+        
+        /* ========== 底池摘要 ========== */
+        .pot-summary {
+            background: linear-gradient(135deg, rgba(255, 193, 7, 0.15), rgba(255, 152, 0, 0.15));
+            border: 2px solid rgba(255, 193, 7, 0.4);
+            border-radius: 12px;
+            padding: clamp(12px, 2vw, 16px);
+            margin-top: 16px;
+            font-size: clamp(12px, 2vw, 13px);
+            font-weight: 500;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .pot-summary > div {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        
+        .pot-summary > div:last-child {
+            margin-bottom: 0;
+        }
+        
+        .pot-summary strong { 
+            color: #ffc107; 
+            font-weight: 700;
+        }
+        
+        /* ========== 分析按钮 ========== */
+        .analyze-btn {
+            width: 100%; 
+            padding: clamp(16px, 3vw, 20px);
+            background: var(--primary-gradient);
+            color: white; 
+            border: none; 
+            border-radius: 14px;
+            font-size: clamp(16px, 3vw, 18px); 
+            font-weight: 700; 
+            cursor: pointer; 
+            transition: all var(--transition-normal);
+            box-shadow: var(--shadow-md);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .analyze-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+        
+        .analyze-btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+        
+        .analyze-btn:hover { 
+            transform: translateY(-3px); 
+            box-shadow: 0 12px 40px rgba(102, 126, 234, 0.6);
+        }
+        
+        .analyze-btn:active {
+            transform: translateY(-1px);
+        }
+        
+        /* ========== 结果面板 ========== */
+        .result-panel { 
+            margin-top: 20px; 
+            display: none;
+            animation: slideInUp 0.5s ease-out;
+        }
+        
+        @keyframes slideInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .result-panel.show { display: block; }
+        
+        .result-panel h3 { 
+            margin-bottom: 20px; 
+            color: #667eea;
+            font-size: clamp(18px, 3vw, 20px);
+            font-weight: 800;
+            text-align: center;
+        }
+        
+        .result-info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px;
+            background: rgba(0, 0, 0, 0.3); 
+            padding: clamp(16px, 3vw, 20px); 
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+        
+        .result-info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .result-info-item strong {
+            font-size: clamp(10px, 1.5vw, 11px);
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.6);
+            letter-spacing: 0.5px;
+        }
+        
+        .result-info-item span {
+            font-size: clamp(13px, 2vw, 15px);
+            font-weight: 700;
+            color: white;
+        }
+        
+        .recommendation { 
+            display: flex; 
+            gap: 12px; 
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        
+        .action-card {
+            flex: 1; 
+            min-width: 100px;
+            padding: clamp(16px, 3vw, 24px); 
+            border-radius: 14px; 
+            text-align: center;
+            background: var(--glass-light);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            transition: all var(--transition-normal);
+            cursor: default;
+        }
+        
+        .action-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .action-card.primary { 
+            background: var(--success-gradient);
+            border-color: #38ef7d;
+            box-shadow: 0 8px 32px rgba(56, 239, 125, 0.3);
+            transform: scale(1.05);
+        }
+        
+        .action-card .action-name { 
+            font-size: clamp(18px, 4vw, 24px); 
+            font-weight: 800; 
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .action-card .frequency { 
+            font-size: clamp(16px, 3vw, 20px); 
+            font-weight: 700;
+            opacity: 0.95;
+        }
+        
+        .strategy-explanation {
+            margin-top: 20px; 
+            padding: clamp(16px, 3vw, 20px); 
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 12px; 
+            border-left: 4px solid #667eea;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .strategy-explanation p:first-child {
+            font-weight: 700; 
+            margin-bottom: 12px;
+            color: #667eea;
+            font-size: clamp(13px, 2vw, 15px);
+        }
+        
+        .strategy-explanation p:last-child {
+            line-height: 1.7; 
+            opacity: 0.9;
+            font-size: clamp(13px, 2vw, 14px);
+        }
+        
+        /* ========== 按钮样式 ========== */
+        .btn-group {
+            display: flex; 
+            gap: 12px; 
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            flex: 1;
+            min-width: 120px;
+            padding: clamp(12px, 2vw, 14px); 
+            border-radius: 12px; 
+            border: none; 
+            cursor: pointer;
+            font-size: clamp(14px, 2vw, 16px); 
+            font-weight: 700; 
+            transition: all var(--transition-normal);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .btn-primary { 
+            background: var(--primary-gradient);
+            color: white;
+            box-shadow: var(--shadow-md);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.5);
+        }
+        
+        .btn-secondary { 
+            background: rgba(255, 255, 255, 0.1); 
+            color: white; 
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+        
+        /* ========== 图例 ========== */
+        .legend {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 16px;
+            font-size: clamp(11px, 2vw, 12px);
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .legend-color.pair {
+            background: linear-gradient(135deg, rgba(231, 76, 60, 0.5), rgba(192, 57, 43, 0.5));
+        }
+        
+        .legend-color.suited {
+            background: linear-gradient(135deg, rgba(52, 152, 219, 0.5), rgba(41, 128, 185, 0.5));
+        }
+        
+        .legend-color.offsuit {
+            background: linear-gradient(135deg, rgba(149, 165, 166, 0.5), rgba(127, 140, 141, 0.5));
+        }
+        
+        /* ========== 响应式设计 ========== */
+        @media (max-width: 768px) {
+            body { padding: 8px; }
+            .tab-navigation { gap: 8px; padding: 8px; }
+            .tab-btn { padding: 10px 12px; font-size: 13px; }
+            .glass-card { padding: 16px; }
+            .recommendation { flex-direction: column; }
+            .result-info-grid { grid-template-columns: 1fr; }
+            .hand-matrix { grid-template-columns: repeat(13, 1fr); gap: 3px; }
+            .hand-cell { font-size: 10px; }
+            .comparison-grid { grid-template-columns: 1fr; }
+        }
+        
+        /* ========== 辅助类 ========== */
+        .text-center { text-align: center; }
+        .mb-2 { margin-bottom: 8px; }
+        .mb-3 { margin-bottom: 12px; }
+        .mb-4 { margin-bottom: 16px; }
+        .mt-2 { margin-top: 8px; }
+        .mt-3 { margin-top: 12px; }
+        .mt-4 { margin-top: 16px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎲 德州扑克 GTO 助手</h1>
+            <p>Premium Edition v9 - 专业GTO策略引擎</p>
+        </header>
+        
+        <!-- Tab 导航 -->
+        <div class="tab-navigation">
+            <button class="tab-btn active" onclick="switchTab('assistant')">🎯 策略助手</button>
+            <button class="tab-btn" onclick="switchTab('intro')">📚 什么是GTO</button>
+        </div>
+        
+        <!-- Tab 1: 策略助手 -->
+        <div id="tab-assistant" class="tab-content active">
+            <div class="main-grid">
+                <!-- 扑克桌区域 -->
+                <div class="table-area glass-card">
+                    <div class="poker-table" id="pokerTable">
+                        <div id="seatsContainer"></div>
+                    </div>
+                </div>
+                
+                <!-- 控制面板 -->
+                <div class="control-panel">
+                    <!-- 游戏设置 -->
+                    <div class="glass-card panel-section">
+                        <h3>1️⃣ 游戏设置</h3>
+                        <div class="player-count-selector">
+                            <button class="player-count-btn" onclick="setPlayerCount(4)">4</button>
+                            <button class="player-count-btn" onclick="setPlayerCount(5)">5</button>
+                            <button class="player-count-btn active" onclick="setPlayerCount(6)">6</button>
+                            <button class="player-count-btn" onclick="setPlayerCount(7)">7</button>
+                            <button class="player-count-btn" onclick="setPlayerCount(8)">8</button>
+                            <button class="player-count-btn" onclick="setPlayerCount(9)">9</button>
+                            <button class="player-count-btn" onclick="setPlayerCount(10)">10</button>
+                        </div>
+                        <div class="stack-input-row">
+                            <label>你的后手:</label>
+                            <input type="number" class="stack-input" id="myStack" value="100" min="10" step="10">
+                            <span style="font-size: 13px; color: rgba(255, 255, 255, 0.7); font-weight: 500;">BB</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 手牌选择 -->
+                    <div class="glass-card panel-section">
+                        <h3>2️⃣ 选择你的手牌</h3>
+                        <div class="hand-display" onclick="openHandSelector()" id="handDisplay">
+                            <span class="hand-notation empty">点击选择手牌</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 位置选择 -->
+                    <div class="glass-card panel-section">
+                        <h3>3️⃣ 点击牌桌选择位置</h3>
+                        <p style="font-size: 14px; color: rgba(255, 255, 255, 0.8); font-weight: 500;">
+                            你的位置: <span id="myPositionText" style="color: #ffd700; font-weight: 700;">未选择</span>
+                        </p>
+                    </div>
+                    
+                    <!-- 行动记录 -->
+                    <div class="glass-card panel-section">
+                        <h3>4️⃣ 记录前置行动</h3>
+                        <div class="action-recorder" id="actionRecorder">
+                            <p style="opacity: 0.6; font-size: 13px; text-align: center; padding: 20px;">请先选择你的位置</p>
+                        </div>
+                        <div class="pot-summary" id="potSummary" style="display:none;">
+                            <div>
+                                <strong>当前底池:</strong> 
+                                <span id="currentPot">-</span>
+                            </div>
+                            <div>
+                                <strong>需要跟注:</strong> 
+                                <span id="toCall">-</span>
+                            </div>
+                            <div>
+                                <strong>底池赔率:</strong> 
+                                <span id="potOdds">-</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 分析按钮 -->
+                    <button class="analyze-btn" onclick="analyzeAction()">
+                        <span style="position: relative; z-index: 1;">🎯 分析当前局面</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 结果面板 -->
+            <div class="result-panel glass-card" id="resultPanel">
+                <h3>📊 GTO 策略建议</h3>
+                
+                <div class="result-info-grid">
+                    <div class="result-info-item">
+                        <strong>位置</strong>
+                        <span id="resultPosition">-</span>
+                    </div>
+                    <div class="result-info-item">
+                        <strong>手牌</strong>
+                        <span id="resultHand" style="font-size: 18px;">-</span>
+                    </div>
+                    <div class="result-info-item">
+                        <strong>后手</strong>
+                        <span id="resultStack">-</span>
+                    </div>
+                    <div class="result-info-item">
+                        <strong>SPR</strong>
+                        <span id="resultSPR">-</span>
+                    </div>
+                    <div class="result-info-item" style="grid-column: 1 / -1;">
+                        <strong>行动序列</strong>
+                        <span id="resultActions" style="font-size: 13px;">-</span>
+                    </div>
+                </div>
+                
+                <div class="recommendation">
+                    <div class="action-card">
+                        <div class="action-name">Fold</div>
+                        <div class="frequency" id="foldFreq">--</div>
+                    </div>
+                    <div class="action-card">
+                        <div class="action-name">Call</div>
+                        <div class="frequency" id="callFreq">--</div>
+                    </div>
+                    <div class="action-card">
+                        <div class="action-name">Raise</div>
+                        <div class="frequency" id="raiseFreq">--</div>
+                    </div>
+                </div>
+                
+                <div class="strategy-explanation">
+                    <p>💡 策略说明</p>
+                    <p id="resultExplanation">等待分析...</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tab 2: 什么是GTO -->
+        <div id="tab-intro" class="tab-content">
+            <div class="gto-intro glass-card">
+                <div class="gto-section">
+                    <h2>📚 什么是 GTO (Game Theory Optimal)?</h2>
+                    <p>
+                        <strong>GTO</strong> 是 <strong>Game Theory Optimal (博弈论最优)</strong> 的缩写,是一种数学上无法被剥削的扑克策略。
+                        简单来说,如果你完美执行 GTO 策略,无论对手如何调整,他们都无法从你身上获得超额利润。
+                    </p>
+                </div>
+                
+                <div class="gto-section">
+                    <h3>🎯 核心概念</h3>
+                    
+                    <div class="comparison-grid">
+                        <div class="comparison-card">
+                            <h4>平衡 (Balance)</h4>
+                            <p>在相同情况下,用不同强度的牌做相同动作,让对手无法读牌</p>
+                        </div>
+                        <div class="comparison-card">
+                            <h4>频率 (Frequency)</h4>
+                            <p>不是每次都做相同决策,而是按照最优比例混合不同行动</p>
+                        </div>
+                        <div class="comparison-card">
+                            <h4>无差异 (Indifference)</h4>
+                            <p>让对手的所有应对策略期望值相等,无法找到最优反制</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="gto-section">
+                    <h3>💡 为什么要学 GTO?</h3>
+                    <ul>
+                        <li><strong>建立基线策略</strong> - 提供一个"不会犯大错"的默认打法</li>
+                        <li><strong>防止被剥削</strong> - 避免被高手针对你的漏洞打击</li>
+                        <li><strong>理解平衡</strong> - 知道什么时候该诈唬,什么时候该价值下注</li>
+                        <li><strong>调整依据</strong> - 先懂 GTO,再根据对手偏离 GTO 的方式进行调整</li>
+                    </ul>
+                </div>
+                
+                <div class="gto-section">
+                    <h3>📊 GTO vs 剥削打法</h3>
+                    
+                    <div class="chart-container">
+                        <div class="chart-row">
+                            <div class="chart-label">GTO 策略</div>
+                            <div class="chart-bar">
+                                <div class="chart-fill" style="width: 70%;">70% 胜率</div>
+                            </div>
+                        </div>
+                        <div class="chart-row">
+                            <div class="chart-label">完美剥削</div>
+                            <div class="chart-bar">
+                                <div class="chart-fill" style="width: 90%; background: var(--success-gradient);">90% 胜率</div>
+                            </div>
+                        </div>
+                        <div class="chart-row">
+                            <div class="chart-label">被反剥削</div>
+                            <div class="chart-bar">
+                                <div class="chart-fill" style="width: 30%; background: var(--danger-gradient);">30% 胜率</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <p style="margin-top: 16px; font-size: 14px; opacity: 0.8;">
+                        <strong>结论</strong>: GTO 提供稳定基线 (70%),剥削打法有更高上限 (90%),但也有被反制的风险 (30%)。
+                        <strong>高手的打法</strong>是以 GTO 为基础,根据对手偏离 GTO 的方式进行剥削。
+                    </p>
+                </div>
+                
+                <div class="gto-section">
+                    <h3>🔍 GTO 在翻前的应用</h3>
+                    <p>
+                        翻前是 GTO 最容易量化的阶段,因为只需要考虑:
+                    </p>
+                    <ul>
+                        <li><strong>手牌强度</strong> - 169 种起手牌组合的相对强度</li>
+                        <li><strong>位置优势</strong> - 后位置能看到更多信息</li>
+                        <li><strong>加注大小</strong> - 需要投入的筹码与底池的比例</li>
+                        <li><strong>防守范围</strong> - 面对加注应该用哪些牌继续</li>
+                    </ul>
+                </div>
+                
+                <div class="gto-section">
+                    <h3>⚖️ 位置的重要性</h3>
+                    
+                    <div class="chart-container">
+                        <div class="chart-row">
+                            <div class="chart-label">BTN (按钮)</div>
+                            <div class="chart-bar">
+                                <div class="chart-fill" style="width: 95%;">~48% 手牌</div>
+                            </div>
+                        </div>
+                        <div class="chart-row">
+                            <div class="chart-label">CO (关位)</div>
+                            <div class="chart-bar">
+                                <div class="chart-fill" style="width: 80%;">~38% 手牌</div>
+                            </div>
+                        </div>
+                        <div class="chart-row">
+                            <div class="chart-label">MP (中位)</div>
+                            <div class="chart-bar">
+                                <div class="chart-fill" style="width: 60%;">~25% 手牌</div>
+                            </div>
+                        </div>
+                        <div class="chart-row">
+                            <div class="chart-label">UTG (枪口)</div>
+                            <div class="chart-bar">
+                                <div class="chart-fill" style="width: 45%;">~18% 手牌</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <p style="margin-top: 16px; font-size: 14px; opacity: 0.8;">
+                        <strong>Open 范围示例</strong>: 越靠前的位置,Open 的手牌范围越紧 (需要更强的牌)。
+                        BTN 可以 Open 接近一半的手牌,而 UTG 只能 Open 最强的 18% 左右。
+                    </p>
+                </div>
+                
+                <div class="gto-section">
+                    <h3>🎲 如何使用本工具?</h3>
+                    <p>
+                        本工具基于 GTO 理论,计算在给定情况下的最优策略频率:
+                    </p>
+                    <ol style="list-style: decimal; padding-left: 28px;">
+                        <li style="margin-bottom: 12px;"><strong>选择手牌</strong> - 输入你的起手牌</li>
+                        <li style="margin-bottom: 12px;"><strong>选择位置</strong> - 点击牌桌上的座位</li>
+                        <li style="margin-bottom: 12px;"><strong>记录行动</strong> - 输入前面玩家的 Fold/Call/Raise</li>
+                        <li style="margin-bottom: 12px;"><strong>分析结果</strong> - 工具会给出 Fold/Call/Raise 的建议频率</li>
+                    </ol>
+                    <p style="margin-top: 16px;">
+                        <strong>注意</strong>: GTO 策略是一个"指南",不是绝对规则。
+                        在实战中,你需要根据对手的风格和牌桌动态进行调整。
+                    </p>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="switchTab('assistant')">
+                        开始使用策略助手 →
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 手牌选择器 -->
+        <div class="hand-selector-overlay" id="handSelector">
+            <div class="hand-selector">
+                <h3>快速选择手牌</h3>
+                <div class="hand-selector-hint">
+                    点击选择手牌组合 (同花/异花/对子)
+                </div>
+                
+                <div class="hand-search">
+                    <input type="text" id="handSearchInput" placeholder="搜索手牌 (如: AK, QQ, 87s...)" oninput="filterHands(this.value)">
+                </div>
+                
+                <div class="hand-matrix" id="handMatrix"></div>
+                
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color pair"></div>
+                        <span>对子 (AA-22)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color suited"></div>
+                        <span>同花 (s)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color offsuit"></div>
+                        <span>异花 (o)</span>
+                    </div>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="closeHandSelector()">取消</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // ========== Tab 切换 ==========
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            if (tabName === 'assistant') {
+                document.querySelector('.tab-btn:nth-child(1)').classList.add('active');
+                document.getElementById('tab-assistant').classList.add('active');
+            } else if (tabName === 'intro') {
+                document.querySelector('.tab-btn:nth-child(2)').classList.add('active');
+                document.getElementById('tab-intro').classList.add('active');
+                // 触发图表动画
+                setTimeout(() => {
+                    document.querySelectorAll('.chart-fill').forEach(fill => {
+                        const width = fill.style.width;
+                        fill.style.width = '0';
+                        setTimeout(() => fill.style.width = width, 50);
+                    });
+                }, 100);
+            }
+        }
+        
+        // ========== 全局状态 ==========
+        let currentPlayerCount = 6;
+        let currentSeat = null;
+        let selectedHand = null;
+        let playerActions = {};
+        let myStack = 100;
+        
+        const positionNamesMap = {
+            4: ['BTN', 'SB', 'BB', 'CO'],
+            5: ['BTN', 'SB', 'BB', 'UTG', 'CO'],
+            6: ['BTN', 'SB', 'BB', 'UTG', 'MP', 'CO'],
+            7: ['BTN', 'SB', 'BB', 'UTG', 'UTG+1', 'MP', 'CO'],
+            8: ['BTN', 'SB', 'BB', 'UTG', 'UTG+1', 'MP', 'MP+1', 'CO'],
+            9: ['BTN', 'SB', 'BB', 'UTG', 'UTG+1', 'UTG+2', 'MP', 'MP+1', 'CO'],
+            10: ['BTN', 'SB', 'BB', 'UTG', 'UTG+1', 'UTG+2', 'MP', 'MP+1', 'MP+2', 'CO']
+        };
+        
+        const ranks = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'];
+        
+        // ========== GTO 策略引擎 v3 ==========
+        
+        // 手牌评分系统 (基于GTO Solver数据优化)
+        const handRankings = {
+            // 超强牌 (95-100) - Premium hands
+            'AA': 100, 'KK': 99, 'QQ': 98, 'AKs': 97, 'JJ': 96,
+            // 强牌 (85-94) - Strong hands
+            'AQs': 94, 'TT': 93, 'AKo': 92, 'AJs': 91, 'KQs': 90,
+            'ATs': 89, '99': 88, 'AQo': 87, 'KJs': 86, 'QJs': 85,
+            // 中强牌 (70-84) - Medium hands
+            '88': 84, 'KTs': 83, 'AJo': 82, 'QTs': 81, 'A9s': 80,
+            'KQo': 79, '77': 78, 'JTs': 77, 'K9s': 76, 'ATo': 75,
+            'A8s': 74, 'Q9s': 73, 'KJo': 72, '66': 71, 'J9s': 70,
+            // 可玩牌 (55-69) - Playable hands
+            'A7s': 69, 'QJo': 68, 'T9s': 67, 'A5s': 66, 'A6s': 65,
+            '55': 64, 'A4s': 63, 'KTo': 62, 'Q8s': 61, 'A3s': 60,
+            'K8s': 59, 'J8s': 58, '44': 57, 'QTo': 56, 'A2s': 55,
+            // 边缘牌 (35-54) - Marginal hands
+            '98s': 54, 'T8s': 53, 'K7s': 52, 'JTo': 51, '33': 50,
+            '87s': 49, 'Q7s': 48, '97s': 47, 'K6s': 46, 'J9o': 45,
+            'T9o': 44, '22': 43, 'K5s': 42, 'Q6s': 41, 'K4s': 40,
+            '76s': 39, 'J7s': 38, 'Q5s': 37, '86s': 36, 'K3s': 35
+        };
+        
+        function getHandStrength(notation) {
+            return handRankings[notation] || 25;
+        }
+        
+        // 位置松紧度 (基于现代GTO理论)
+        const positionTightness = {
+            'UTG': 1.00, 'UTG+1': 0.90, 'UTG+2': 0.80,
+            'MP': 0.75, 'MP+1': 0.70, 'MP+2': 0.65,
+            'CO': 0.55, 'BTN': 0.40, 'SB': 0.80, 'BB': 1.00
+        };
+        
+        // ========== 防守范围计算引擎 v3 ==========
+        function calculateDefenseRange(handStrength, raiserPos, heroPos, raiseSize, spr, callers) {
+            console.log('\n=== GTO 防守范围计算 v3 ===');
+            console.log(`手牌强度: ${handStrength}, 加注位置: ${raiserPos}, 英雄位置: ${heroPos}`);
+            console.log(`加注大小: ${raiseSize}BB, SPR: ${spr}, 已有跟注: ${callers}人`);
+            
+            // 1. 基础防守阈值 - 根据加注位置
+            const raiserTightness = positionTightness[raiserPos] || 0.8;
+            const baseThreshold = 45 + (raiserTightness * 35); // UTG: 80, BTN: 59
+            
+            console.log(`加注位置松紧度: ${raiserTightness.toFixed(2)}, 基础阈值: ${baseThreshold.toFixed(1)}`);
+            
+            // 2. 位置优势调整 (关键改进!)
+            const positionOrder = ['UTG', 'UTG+1', 'UTG+2', 'MP', 'MP+1', 'MP+2', 'CO', 'BTN', 'SB', 'BB'];
+            const raiserIndex = positionOrder.indexOf(raiserPos);
+            const heroIndex = positionOrder.indexOf(heroPos);
+            const hasPosition = heroIndex > raiserIndex;
+            
+            // 有位置优势可以防守更宽
+            let positionBonus = 0;
+            if (hasPosition) {
+                const distanceAdvantage = heroIndex - raiserIndex;
+                positionBonus = 8 + Math.min(distanceAdvantage * 2, 12); // 8-20分
+            } else {
+                positionBonus = -8; // 无位置需要更紧
+            }
+            
+            console.log(`位置优势: ${hasPosition ? '有' : '无'}, 位置加成: ${positionBonus.toFixed(1)}`);
+            
+            // 3. 加注大小调整 (MDF - Minimum Defense Frequency)
+            // MDF = 底池/(底池+跟注) - 理论最小防守频率
+            const pot = 1.5; // 盲注底池
+            const toCall = raiseSize - (heroPos === 'BB' ? 1 : heroPos === 'SB' ? 0.5 : 0);
+            const mdf = pot / (pot + toCall);
+            
+            let sizeAdjustment = 0;
+            if (raiseSize <= 2.5) sizeAdjustment = -12; // 小size防守更宽
+            else if (raiseSize <= 3) sizeAdjustment = -5;
+            else if (raiseSize <= 4) sizeAdjustment = 5;
+            else if (raiseSize <= 6) sizeAdjustment = 18;
+            else if (raiseSize <= 10) sizeAdjustment = 30;
+            else sizeAdjustment = 45;
+            
+            console.log(`MDF: ${(mdf * 100).toFixed(1)}%, Size调整: ${sizeAdjustment.toFixed(1)}`);
+            
+            // 4. SPR 调整 (筹码深度影响)
+            let sprAdjustment = 0;
+            if (spr < 3) sprAdjustment = -20; // 极浅筹码,all-in范围更宽
+            else if (spr < 5) sprAdjustment = -10;
+            else if (spr < 10) sprAdjustment = 0;
+            else if (spr > 20) sprAdjustment = 8; // 深筹码更谨慎
+            
+            console.log(`SPR调整: ${sprAdjustment.toFixed(1)}`);
+            
+            // 5. 多人底池调整 (range收缩)
+            const multiWayAdjustment = callers * 18; // 每个跟注者提高18分阈值
+            
+            console.log(`多人底池调整: +${multiWayAdjustment.toFixed(1)}`);
+            
+            // 6. 最终防守阈值
+            const finalThreshold = baseThreshold + positionBonus + sizeAdjustment + sprAdjustment + multiWayAdjustment;
+            
+            console.log(`最终防守阈值: ${finalThreshold.toFixed(1)}`);
+            console.log(`手牌强度 vs 阈值: ${handStrength} vs ${finalThreshold.toFixed(1)}`);
+            
+            // 7. 生成策略频率 (改进的频率分配)
+            let fold = 0, call = 0, raise = 0;
+            
+            const gap = handStrength - finalThreshold;
+            
+            if (gap < -25) {
+                // 远低于阈值 - 必须弃牌
+                fold = 100;
+                console.log('决策: 远低于阈值 (-25+),必须Fold');
+            } else if (gap < -10) {
+                // 低于阈值 - 主要弃牌
+                fold = 85;
+                call = 15;
+                console.log('决策: 低于阈值 (-10 to -25),主要Fold');
+            } else if (gap < 0) {
+                // 略低于阈值 - 混合弃牌/跟注
+                fold = Math.round(50 + gap * 3); // gap越小fold越多
+                call = 100 - fold;
+                console.log(`决策: 略低于阈值 (0 to -10),混合Fold ${fold}% / Call ${call}%`);
+            } else if (gap < 15) {
+                // 满足防守 - 主要跟注
+                call = 75;
+                raise = 25;
+                console.log('决策: 满足防守 (0 to +15),主要Call');
+            } else if (gap < 30) {
+                // 强牌 - 混合跟注/加注
+                call = 45;
+                raise = 55;
+                console.log('决策: 强牌 (+15 to +30),混合Call/Raise');
+            } else {
+                // 超强牌 - 主要加注
+                call = 20;
+                raise = 80;
+                console.log('决策: 超强牌 (+30+),主要Raise');
+            }
+            
+            // 8. SPR 极浅时调整为推回策略
+            if (spr < 3 && handStrength >= finalThreshold - 15) {
+                raise = Math.min(100, raise + 35);
+                call = Math.max(0, call - 20);
+                fold = 100 - raise - call;
+                console.log('SPR < 3: 调整为推回策略');
+            }
+            
+            // 9. 多人底池降低3-bet频率
+            if (callers >= 1 && raise > 30) {
+                const reduction = Math.min(raise - 10, callers * 15);
+                raise -= reduction;
+                call += reduction;
+                console.log(`多人底池: 降低3-bet频率 -${reduction.toFixed(0)}%`);
+            }
+            
+            console.log(`最终策略: Fold ${fold}%, Call ${call}%, Raise ${raise}%`);
+            console.log('=== 计算完成 ===\n');
+            
+            return { fold, call, raise };
+        }
+        
+        // Open raise 范围计算
+        function calculateOpenRange(handStrength, position, spr) {
+            console.log('\n=== GTO Open范围计算 v3 ===');
+            console.log(`手牌强度: ${handStrength}, 位置: ${position}, SPR: ${spr}`);
+            
+            const tightness = positionTightness[position] || 0.8;
+            const openThreshold = 30 + (tightness * 35); // UTG 65分, BTN 44分
+            
+            console.log(`位置松紧度: ${tightness.toFixed(2)}, Open阈值: ${openThreshold.toFixed(1)}`);
+            
+            let fold = 0, call = 0, raise = 0;
+            
+            const gap = handStrength - openThreshold;
+            
+            if (gap < -20) {
+                fold = 100;
+                console.log('决策: 远低于Open阈值,Fold');
+            } else if (gap < -5) {
+                // 边缘Open - 混合策略
+                fold = 70 + gap * 2;
+                raise = 100 - fold;
+                console.log(`决策: 边缘Open,Fold ${fold}% / Raise ${raise}%`);
+            } else {
+                // 标准Open
+                raise = 100;
+                console.log('决策: 满足Open,Raise 100%');
+            }
+            
+            console.log('=== 计算完成 ===\n');
+            return { fold, call, raise };
+        }
+        
+        // ========== 底池计算 ==========
+        function calculatePot() {
+            const positions = positionNamesMap[currentPlayerCount];
+            const myPos = positions[currentSeat];
+            
+            let pot = 1.5;
+            let maxBet = 1;
+            let myCurrentBet = myPos === 'BB' ? 1 : (myPos === 'SB' ? 0.5 : 0);
+            
+            for (const pos of positions) {
+                if (pos === myPos) break;
+                
+                const action = playerActions[pos];
+                if (action) {
+                    if (action.action === 'raise') {
+                        pot += action.size;
+                        maxBet = action.size;
+                    } else if (action.action === 'call') {
+                        pot += maxBet;
+                    }
+                }
+            }
+            
+            const toCall = Math.max(0, maxBet - myCurrentBet);
+            const potOdds = toCall > 0 ? (toCall / (pot + toCall) * 100).toFixed(1) + '%' : 'N/A';
+            
+            return { pot, toCall, potOdds, maxBet };
+        }
+        
+        function calculateSPR(effectiveStack, potSize) {
+            return potSize > 0 ? (effectiveStack / potSize).toFixed(1) : 'N/A';
+        }
+        
+        // ========== 生成手牌矩阵 ==========
+        function generateHandMatrix() {
+            const matrix = document.getElementById('handMatrix');
+            matrix.innerHTML = '';
+            
+            for (let i = 0; i < ranks.length; i++) {
+                for (let j = 0; j < ranks.length; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'hand-cell';
+                    
+                    const rank1 = ranks[i];
+                    const rank2 = ranks[j];
+                    
+                    let notation = '';
+                    let cellClass = '';
+                    
+                    if (i === j) {
+                        notation = rank1 + rank2;
+                        cellClass = 'pair';
+                    } else if (i < j) {
+                        notation = rank1 + rank2 + 's';
+                        cellClass = 'suited';
+                    } else {
+                        notation = rank2 + rank1 + 'o';
+                        cellClass = 'offsuit';
+                    }
+                    
+                    cell.classList.add(cellClass);
+                    cell.innerHTML = `<span class="hand-cell-label">${notation}</span>`;
+                    cell.dataset.notation = notation;
+                    cell.onclick = () => selectHandFromMatrix(notation);
+                    
+                    matrix.appendChild(cell);
+                }
+            }
+        }
+        
+        function selectHandFromMatrix(notation) {
+            selectedHand = notation;
+            
+            const handDisplay = document.getElementById('handDisplay');
+            handDisplay.innerHTML = `<span class="hand-notation">${notation}</span>`;
+            handDisplay.classList.add('selected');
+            
+            document.querySelectorAll('.hand-cell').forEach(cell => {
+                if (cell.dataset.notation === notation) {
+                    cell.classList.add('selected');
+                } else {
+                    cell.classList.remove('selected');
+                }
+            });
+            
+            closeHandSelector();
+        }
+        
+        function filterHands(query) {
+            query = query.toUpperCase().trim();
+            
+            document.querySelectorAll('.hand-cell').forEach(cell => {
+                const notation = cell.dataset.notation;
+                if (notation.includes(query) || query === '') {
+                    cell.style.display = 'flex';
+                } else {
+                    cell.style.display = 'none';
+                }
+            });
+        }
+        
+        function openHandSelector() {
+            generateHandMatrix();
+            document.getElementById('handSelector').classList.add('active');
+            document.getElementById('handSearchInput').value = '';
+            document.getElementById('handSearchInput').focus();
+        }
+        
+        function closeHandSelector() {
+            document.getElementById('handSelector').classList.remove('active');
+        }
+        
+        // ========== UI逻辑 ==========
+        function setPlayerCount(count) {
+            currentPlayerCount = count;
+            currentSeat = null;
+            playerActions = {};
+            
+            document.querySelectorAll('.player-count-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.textContent === count.toString()) btn.classList.add('active');
+            });
+            
+            renderSeats();
+            updateActionRecorder();
+        }
+        
+        function renderSeats() {
+            const container = document.getElementById('seatsContainer');
+            container.innerHTML = '';
+            
+            const positions = positionNamesMap[currentPlayerCount];
+            const centerX = 50, centerY = 50, radiusX = 42, radiusY = 38;
+            
+            for (let i = 0; i < currentPlayerCount; i++) {
+                const seat = document.createElement('div');
+                seat.className = 'seat';
+                
+                const angle = (i / currentPlayerCount) * 2 * Math.PI - Math.PI / 2;
+                seat.style.left = (centerX + radiusX * Math.cos(angle)) + '%';
+                seat.style.top = (centerY + radiusY * Math.sin(angle)) + '%';
+                seat.style.transform = 'translate(-50%, -50%)';
+                
+                const posName = positions[i];
+                const action = playerActions[posName];
+                let actionText = action ? 
+                    (action.action === 'raise' ? `Raise ${action.size}BB` :
+                     action.action === 'call' ? 'Call' : 'Fold') : '-';
+                
+                seat.innerHTML = `
+                    <div class="seat-content" onclick="selectSeat(${i})">
+                        <div class="seat-position">${posName}</div>
+                        <div class="seat-action">${actionText}</div>
+                    </div>
+                `;
+                
+                if (action && action.action !== 'fold') seat.classList.add('has-action');
+                container.appendChild(seat);
+            }
+            
+            if (currentSeat !== null) {
+                document.querySelectorAll('.seat')[currentSeat].classList.add('active');
+            }
+        }
+        
+        function selectSeat(index) {
+            document.querySelectorAll('.seat').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.seat')[index].classList.add('active');
+            
+            currentSeat = index;
+            document.getElementById('myPositionText').textContent = positionNamesMap[currentPlayerCount][index];
+            updateActionRecorder();
+        }
+        
+        function updateActionRecorder() {
+            const recorder = document.getElementById('actionRecorder');
+            if (currentSeat === null) {
+                recorder.innerHTML = '<p style="opacity: 0.6; font-size: 13px; text-align: center; padding: 20px;">请先选择你的位置</p>';
+                document.getElementById('potSummary').style.display = 'none';
+                return;
+            }
+            
+            const positions = positionNamesMap[currentPlayerCount];
+            const myPos = positions[currentSeat];
+            const positionOrder = ['UTG', 'UTG+1', 'UTG+2', 'MP', 'MP+1', 'MP+2', 'CO', 'BTN', 'SB', 'BB'];
+            const myPosIndex = positionOrder.indexOf(myPos);
+            
+            const prePositions = positionOrder.filter(pos => 
+                positions.includes(pos) && positionOrder.indexOf(pos) < myPosIndex
+            );
+            
+            recorder.innerHTML = '';
+            if (prePositions.length === 0) {
+                recorder.innerHTML = '<p style="opacity: 0.6; font-size: 13px; text-align: center; padding: 20px;">你是第一个行动的位置</p>';
+                document.getElementById('potSummary').style.display = 'none';
+                return;
+            }
+            
+            prePositions.forEach(pos => {
+                const action = playerActions[pos] || { action: '', size: 3 };
+                const row = document.createElement('div');
+                row.className = 'action-row';
+                row.innerHTML = `
+                    <div class="position-label">${pos}</div>
+                    <div class="action-buttons">
+                        <button class="action-btn fold-btn ${action.action === 'fold' ? 'active' : ''}" 
+                                onclick="setAction('${pos}', 'fold')">Fold</button>
+                        <button class="action-btn call-btn ${action.action === 'call' ? 'active' : ''}" 
+                                onclick="setAction('${pos}', 'call')">Call</button>
+                        <button class="action-btn raise-btn ${action.action === 'raise' ? 'active' : ''}" 
+                                onclick="setAction('${pos}', 'raise')">Raise</button>
+                        <input type="number" class="raise-input" value="${action.size || 3}" min="2" step="0.5"
+                               onchange="setRaiseSize('${pos}', this.value)" 
+                               ${action.action === 'raise' ? '' : 'disabled'}>
+                        <span style="font-size: 11px; color: rgba(255, 255, 255, 0.6);">BB</span>
+                    </div>
+                `;
+                recorder.appendChild(row);
+            });
+            
+            const potInfo = calculatePot();
+            document.getElementById('currentPot').textContent = potInfo.pot.toFixed(1) + ' BB';
+            document.getElementById('toCall').textContent = potInfo.toCall.toFixed(1) + ' BB';
+            document.getElementById('potOdds').textContent = potInfo.potOdds;
+            document.getElementById('potSummary').style.display = 'block';
+        }
+        
+        function setAction(pos, action) {
+            if (!playerActions[pos]) playerActions[pos] = { size: 3 };
+            playerActions[pos].action = action;
+            updateActionRecorder();
+            renderSeats();
+        }
+        
+        function setRaiseSize(pos, size) {
+            if (!playerActions[pos]) playerActions[pos] = { action: 'raise' };
+            playerActions[pos].size = parseFloat(size);
+            updateActionRecorder();
+            renderSeats();
+        }
+        
+        // ========== 分析逻辑 ==========
+        function analyzeAction() {
+            if (!selectedHand) {
+                alert('请先选择你的手牌');
+                return;
+            }
+            if (currentSeat === null) {
+                alert('请选择你的位置');
+                return;
+            }
+            
+            myStack = parseFloat(document.getElementById('myStack').value);
+            
+            const positions = positionNamesMap[currentPlayerCount];
+            const myPos = positions[currentSeat];
+            const handStrength = getHandStrength(selectedHand);
+            
+            const positionOrder = ['UTG', 'UTG+1', 'UTG+2', 'MP', 'MP+1', 'MP+2', 'CO', 'BTN', 'SB', 'BB'];
+            const actionSeq = [];
+            let lastRaiser = null;
+            let raiseSize = 0;
+            let callers = 0;
+            
+            for (const pos of positionOrder) {
+                if (!positions.includes(pos) || pos === myPos) break;
+                
+                const action = playerActions[pos];
+                if (action && action.action === 'raise') {
+                    actionSeq.push(`${pos} Raise ${action.size}BB`);
+                    lastRaiser = pos;
+                    raiseSize = action.size;
+                    callers = 0;
+                } else if (action && action.action === 'call') {
+                    actionSeq.push(`${pos} Call`);
+                    callers++;
+                }
+            }
+            
+            const potInfo = calculatePot();
+            const spr = parseFloat(calculateSPR(myStack, potInfo.pot));
+            
+            let strategy;
+            if (lastRaiser) {
+                strategy = calculateDefenseRange(handStrength, lastRaiser, myPos, raiseSize, spr, callers);
+            } else {
+                strategy = calculateOpenRange(handStrength, myPos, spr);
+            }
+            
+            // 更新结果显示
+            document.getElementById('resultPosition').textContent = `${myPos} (${currentPlayerCount}人桌)`;
+            document.getElementById('resultHand').textContent = `${selectedHand} (强度: ${handStrength})`;
+            document.getElementById('resultStack').textContent = myStack + ' BB';
+            document.getElementById('resultActions').textContent = actionSeq.length > 0 ? 
+                actionSeq.join(' → ') : '前面全弃牌 (Open场景)';
+            document.getElementById('resultSPR').textContent = spr.toFixed(1);
+            
+            document.getElementById('foldFreq').textContent = Math.round(strategy.fold) + '%';
+            document.getElementById('callFreq').textContent = Math.round(strategy.call) + '%';
+            document.getElementById('raiseFreq').textContent = Math.round(strategy.raise) + '%';
+            
+            const actionCards = document.querySelectorAll('.action-card');
+            actionCards.forEach(card => card.classList.remove('primary'));
+            
+            const maxFreq = Math.max(strategy.fold, strategy.call, strategy.raise);
+            if (maxFreq === strategy.fold) actionCards[0].classList.add('primary');
+            else if (maxFreq === strategy.call) actionCards[1].classList.add('primary');
+            else actionCards[2].classList.add('primary');
+            
+            // 生成策略说明
+            let explanation = '';
+            if (lastRaiser) {
+                explanation = `面对 ${lastRaiser} 的 ${raiseSize}BB 加注`;
+                if (callers > 0) explanation += ` (已有${callers}人跟注)`;
+                explanation += `。手牌强度 ${handStrength} 分,SPR ${spr.toFixed(1)}。`;
+                
+                if (strategy.fold >= 70) {
+                    explanation += ` 该手牌不在GTO防守范围内,应该弃牌。`;
+                } else if (strategy.raise >= 50) {
+                    explanation += ` 该手牌在3-bet范围内,建议混合加注和跟注以保持平衡。`;
+                } else {
+                    explanation += ` 该手牌满足防守条件,建议主要跟注观察翻牌。`;
+                }
+            } else {
+                explanation = `Open场景,在${myPos}位置。手牌强度 ${handStrength} 分,SPR ${spr.toFixed(1)}。`;
+                
+                if (strategy.raise >= 80) {
+                    explanation += ` 该手牌在此位置的GTO Open范围内,建议加注入池。`;
+                } else if (strategy.fold >= 50) {
+                    explanation += ` 该手牌不在此位置的Open范围内,应该弃牌。`;
+                } else {
+                    explanation += ` 该手牌处于Open边缘,可以混合弃牌和加注。`;
+                }
+            }
+            
+            document.getElementById('resultExplanation').textContent = explanation;
+            document.getElementById('resultPanel').classList.add('show');
+            
+            setTimeout(() => {
+                document.getElementById('resultPanel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 100);
+        }
+        
+        document.getElementById('myStack').addEventListener('change', function() {
+            myStack = parseFloat(this.value);
+            updateActionRecorder();
+        });
+        
+        renderSeats();
+    </script>
+</body>
+</html>
