@@ -1,0 +1,1517 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>德州扑克GTO助手 - Premium Edition</title>
+    <style>
+        /* ========== 全局基础样式 ========== */
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+        }
+        
+        :root {
+            /* 主题色彩 */
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            --danger-gradient: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+            --warning-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            
+            /* 背景色 */
+            --bg-primary: #0a0e27;
+            --bg-secondary: #151932;
+            --bg-tertiary: #1e2139;
+            
+            /* 扑克桌色彩 */
+            --table-felt: linear-gradient(135deg, #0d4d3c 0%, #1a7360 50%, #0d4d3c 100%);
+            --table-border: #8b4513;
+            
+            /* 透明度层级 */
+            --glass-light: rgba(255, 255, 255, 0.1);
+            --glass-medium: rgba(255, 255, 255, 0.15);
+            --glass-heavy: rgba(255, 255, 255, 0.2);
+            
+            /* 阴影 */
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.15);
+            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.2);
+            --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.3);
+            --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.4);
+            
+            /* 动画时长 */
+            --transition-fast: 0.15s;
+            --transition-normal: 0.3s;
+            --transition-slow: 0.5s;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: var(--bg-primary);
+            background-image: 
+                radial-gradient(circle at 20% 50%, rgba(102, 126, 234, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(118, 75, 162, 0.1) 0%, transparent 50%);
+            min-height: 100vh;
+            padding: 20px;
+            color: white;
+            overflow-x: hidden;
+        }
+        
+        /* ========== 容器布局 ========== */
+        .container { 
+            max-width: 1600px; 
+            margin: 0 auto; 
+        }
+        
+        header { 
+            text-align: center; 
+            margin-bottom: 40px;
+            animation: fadeInDown 0.6s ease-out;
+        }
+        
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        header h1 {
+            font-size: 42px;
+            font-weight: 800;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+        
+        header p {
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.6);
+            font-weight: 400;
+        }
+        
+        .main-grid { 
+            display: grid; 
+            grid-template-columns: 1fr 420px; 
+            gap: 24px;
+            animation: fadeIn 0.8s ease-out 0.2s both;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @media (max-width: 1200px) { 
+            .main-grid { grid-template-columns: 1fr; }
+        }
+        
+        /* ========== 玻璃态卡片 ========== */
+        .glass-card {
+            background: var(--glass-light);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 28px;
+            border: 1px solid var(--glass-medium);
+            box-shadow: var(--shadow-lg);
+            transition: all var(--transition-normal);
+        }
+        
+        .glass-card:hover {
+            border-color: var(--glass-heavy);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-xl);
+        }
+        
+        /* ========== 扑克桌区域 ========== */
+        .table-area {
+            position: relative;
+        }
+        
+        .poker-table {
+            position: relative; 
+            width: 100%; 
+            padding-bottom: 62%;
+            background: var(--table-felt);
+            border-radius: 50%; 
+            border: 18px solid var(--table-border);
+            box-shadow: 
+                inset 0 0 60px rgba(0, 0, 0, 0.6),
+                0 20px 60px rgba(0, 0, 0, 0.5),
+                0 0 0 3px rgba(139, 69, 19, 0.5);
+            overflow: hidden;
+        }
+        
+        .poker-table::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 85%;
+            height: 85%;
+            border: 2px dashed rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        
+        .poker-table::after {
+            content: '🎲 GTO TABLE';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 14px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.15);
+            letter-spacing: 2px;
+            pointer-events: none;
+        }
+        
+        /* ========== 座位样式 ========== */
+        .seat { 
+            position: absolute; 
+            width: 110px;
+            z-index: 10;
+        }
+        
+        .seat-content {
+            background: linear-gradient(145deg, rgba(30, 33, 57, 0.95), rgba(15, 17, 35, 0.95));
+            backdrop-filter: blur(10px);
+            border-radius: 14px; 
+            padding: 12px;
+            border: 2px solid rgba(102, 126, 234, 0.3);
+            cursor: pointer; 
+            transition: all var(--transition-normal);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .seat:hover .seat-content { 
+            border-color: rgba(102, 126, 234, 0.8);
+            transform: scale(1.08);
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .seat.active .seat-content {
+            background: var(--primary-gradient);
+            border-color: #ffd700;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.4); }
+            50% { box-shadow: 0 0 30px rgba(255, 215, 0, 0.6); }
+        }
+        
+        .seat.has-action .seat-content { 
+            border-color: #f45c43; 
+            background: linear-gradient(145deg, rgba(231, 76, 60, 0.3), rgba(192, 57, 43, 0.3));
+        }
+        
+        .seat-position { 
+            font-size: 14px; 
+            font-weight: 700; 
+            color: #ffd700; 
+            text-align: center;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        
+        .seat-action { 
+            font-size: 12px; 
+            color: rgba(255, 255, 255, 0.85); 
+            text-align: center; 
+            margin-top: 6px;
+            font-weight: 500;
+        }
+        
+        /* ========== 控制面板 ========== */
+        .control-panel { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 20px; 
+        }
+        
+        .panel-section { 
+            padding: 0;
+        }
+        
+        .panel-section h3 { 
+            margin-bottom: 18px; 
+            color: #667eea; 
+            font-size: 15px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        /* ========== 玩家数量选择器 ========== */
+        .player-count-selector { 
+            display: flex; 
+            gap: 10px; 
+            flex-wrap: wrap; 
+        }
+        
+        .player-count-btn {
+            width: 50px; 
+            height: 50px; 
+            border-radius: 12px;
+            border: 2px solid rgba(102, 126, 234, 0.4); 
+            background: var(--glass-light);
+            backdrop-filter: blur(10px);
+            color: white; 
+            cursor: pointer; 
+            transition: all var(--transition-normal);
+            font-size: 18px; 
+            font-weight: 700;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .player-count-btn:hover { 
+            transform: scale(1.1) rotate(5deg); 
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
+            border-color: rgba(102, 126, 234, 0.8);
+        }
+        
+        .player-count-btn.active { 
+            background: var(--primary-gradient);
+            border-color: #764ba2;
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.6);
+        }
+        
+        /* ========== 筹码输入 ========== */
+        .stack-input-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 16px;
+            padding: 14px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+        
+        .stack-input-row label {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: 600;
+            min-width: 80px;
+        }
+        
+        .stack-input {
+            flex: 1;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 2px solid rgba(102, 126, 234, 0.5);
+            background: rgba(0, 0, 0, 0.4);
+            color: white;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all var(--transition-normal);
+        }
+        
+        .stack-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+        
+        /* ========== 快速手牌选择 ========== */
+        .hand-display {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            margin: 12px 0;
+            background: linear-gradient(145deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
+            border-radius: 14px;
+            border: 2px solid rgba(102, 126, 234, 0.3);
+            min-height: 80px;
+            cursor: pointer;
+            transition: all var(--transition-normal);
+        }
+        
+        .hand-display:hover {
+            border-color: rgba(102, 126, 234, 0.6);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+        }
+        
+        .hand-display.selected {
+            border-color: #667eea;
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
+        }
+        
+        .hand-notation {
+            font-size: 36px;
+            font-weight: 800;
+            color: white;
+            letter-spacing: 2px;
+        }
+        
+        .hand-notation.empty {
+            font-size: 18px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.5);
+        }
+        
+        /* ========== 手牌选择器网格 ========== */
+        .hand-selector-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.92);
+            backdrop-filter: blur(10px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            animation: fadeIn 0.3s ease-out;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        .hand-selector-overlay.active {
+            display: flex;
+        }
+        
+        .hand-selector {
+            background: linear-gradient(145deg, rgba(30, 33, 57, 0.98), rgba(15, 17, 35, 0.98));
+            border-radius: 24px;
+            padding: 36px;
+            max-width: 900px;
+            width: 95%;
+            border: 2px solid rgba(102, 126, 234, 0.5);
+            box-shadow: var(--shadow-xl);
+            animation: scaleIn 0.3s ease-out;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        @keyframes scaleIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        
+        .hand-selector h3 {
+            text-align: center;
+            margin-bottom: 24px;
+            color: #667eea;
+            font-size: 24px;
+            font-weight: 800;
+        }
+        
+        .hand-selector-hint {
+            text-align: center;
+            margin-bottom: 20px;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 14px;
+        }
+        
+        /* 手牌矩阵网格 */
+        .hand-matrix {
+            display: grid;
+            grid-template-columns: repeat(13, 1fr);
+            gap: 6px;
+            margin-bottom: 24px;
+        }
+        
+        .hand-cell {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--glass-light);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all var(--transition-normal);
+            position: relative;
+        }
+        
+        .hand-cell:hover {
+            transform: scale(1.1);
+            border-color: #667eea;
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+            z-index: 10;
+        }
+        
+        .hand-cell.selected {
+            background: var(--primary-gradient);
+            border-color: #764ba2;
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.6);
+        }
+        
+        /* 对子 (对角线) */
+        .hand-cell.pair {
+            background: linear-gradient(135deg, rgba(231, 76, 60, 0.3), rgba(192, 57, 43, 0.3));
+        }
+        
+        /* 同花 (左上) */
+        .hand-cell.suited {
+            background: linear-gradient(135deg, rgba(52, 152, 219, 0.3), rgba(41, 128, 185, 0.3));
+        }
+        
+        /* 异花 (右下) */
+        .hand-cell.offsuit {
+            background: linear-gradient(135deg, rgba(149, 165, 166, 0.3), rgba(127, 140, 141, 0.3));
+        }
+        
+        .hand-cell-label {
+            font-size: 11px;
+            font-weight: 600;
+        }
+        
+        /* ========== 搜索框 ========== */
+        .hand-search {
+            margin-bottom: 20px;
+        }
+        
+        .hand-search input {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 2px solid rgba(102, 126, 234, 0.4);
+            background: rgba(0, 0, 0, 0.4);
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            text-align: center;
+            transition: all var(--transition-normal);
+        }
+        
+        .hand-search input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+        
+        .hand-search input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+        
+        /* ========== 行动记录器 ========== */
+        .action-recorder { 
+            max-height: 350px; 
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+        
+        .action-recorder::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .action-recorder::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+        }
+        
+        .action-recorder::-webkit-scrollbar-thumb {
+            background: var(--primary-gradient);
+            border-radius: 10px;
+        }
+        
+        .action-row {
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+            margin-bottom: 14px;
+            padding: 12px; 
+            background: rgba(0, 0, 0, 0.4); 
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all var(--transition-normal);
+        }
+        
+        .action-row:hover {
+            background: rgba(0, 0, 0, 0.5);
+            border-color: rgba(102, 126, 234, 0.3);
+        }
+        
+        .position-label { 
+            min-width: 70px; 
+            font-weight: 700; 
+            color: #ffd700; 
+            font-size: 13px;
+            text-align: center;
+            padding: 6px 10px;
+            background: rgba(255, 215, 0, 0.1);
+            border-radius: 6px;
+        }
+        
+        .action-buttons { 
+            display: flex; 
+            gap: 6px; 
+            flex: 1; 
+            align-items: center; 
+        }
+        
+        .action-btn {
+            flex: 1; 
+            padding: 8px; 
+            border-radius: 8px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            background: var(--glass-light);
+            backdrop-filter: blur(10px);
+            color: white; 
+            cursor: pointer; 
+            transition: all var(--transition-normal); 
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .action-btn:hover { 
+            border-color: #667eea; 
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        
+        .action-btn.active { 
+            background: var(--primary-gradient);
+            border-color: #764ba2;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .action-btn.fold-btn.active { 
+            background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+        }
+        
+        .action-btn.call-btn.active { 
+            background: linear-gradient(135deg, #3498db, #2980b9);
+        }
+        
+        .action-btn.raise-btn.active { 
+            background: var(--danger-gradient);
+        }
+        
+        .raise-input {
+            width: 55px; 
+            padding: 6px; 
+            border-radius: 6px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            background: rgba(0, 0, 0, 0.4); 
+            color: white;
+            text-align: center; 
+            font-size: 12px;
+            font-weight: 600;
+            transition: all var(--transition-normal);
+        }
+        
+        .raise-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+        
+        /* ========== 底池摘要 ========== */
+        .pot-summary {
+            background: linear-gradient(135deg, rgba(255, 193, 7, 0.15), rgba(255, 152, 0, 0.15));
+            border: 2px solid rgba(255, 193, 7, 0.4);
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 16px;
+            font-size: 13px;
+            font-weight: 500;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .pot-summary > div {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        
+        .pot-summary > div:last-child {
+            margin-bottom: 0;
+        }
+        
+        .pot-summary strong { 
+            color: #ffc107; 
+            font-weight: 700;
+        }
+        
+        /* ========== 分析按钮 ========== */
+        .analyze-btn {
+            width: 100%; 
+            padding: 20px;
+            background: var(--primary-gradient);
+            color: white; 
+            border: none; 
+            border-radius: 14px;
+            font-size: 18px; 
+            font-weight: 700; 
+            cursor: pointer; 
+            transition: all var(--transition-normal);
+            box-shadow: var(--shadow-md);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .analyze-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+        
+        .analyze-btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+        
+        .analyze-btn:hover { 
+            transform: translateY(-3px); 
+            box-shadow: 0 12px 40px rgba(102, 126, 234, 0.6);
+        }
+        
+        .analyze-btn:active {
+            transform: translateY(-1px);
+        }
+        
+        /* ========== 结果面板 ========== */
+        .result-panel { 
+            margin-top: 24px; 
+            display: none;
+            animation: slideInUp 0.5s ease-out;
+        }
+        
+        @keyframes slideInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .result-panel.show { display: block; }
+        
+        .result-panel h3 { 
+            margin-bottom: 24px; 
+            color: #667eea;
+            font-size: 20px;
+            font-weight: 800;
+            text-align: center;
+        }
+        
+        .result-info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            background: rgba(0, 0, 0, 0.3); 
+            padding: 20px; 
+            border-radius: 12px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+        
+        .result-info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .result-info-item strong {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.6);
+            letter-spacing: 0.5px;
+        }
+        
+        .result-info-item span {
+            font-size: 15px;
+            font-weight: 700;
+            color: white;
+        }
+        
+        .recommendation { 
+            display: flex; 
+            gap: 16px; 
+            margin: 24px 0; 
+        }
+        
+        .action-card {
+            flex: 1; 
+            padding: 24px; 
+            border-radius: 14px; 
+            text-align: center;
+            background: var(--glass-light);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            transition: all var(--transition-normal);
+            cursor: default;
+        }
+        
+        .action-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .action-card.primary { 
+            background: var(--success-gradient);
+            border-color: #38ef7d;
+            box-shadow: 0 8px 32px rgba(56, 239, 125, 0.3);
+            transform: scale(1.05);
+        }
+        
+        .action-card .action-name { 
+            font-size: 24px; 
+            font-weight: 800; 
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .action-card .frequency { 
+            font-size: 20px; 
+            font-weight: 700;
+            opacity: 0.95;
+        }
+        
+        .strategy-explanation {
+            margin-top: 24px; 
+            padding: 20px; 
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 12px; 
+            border-left: 4px solid #667eea;
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .strategy-explanation p:first-child {
+            font-weight: 700; 
+            margin-bottom: 12px;
+            color: #667eea;
+            font-size: 15px;
+        }
+        
+        .strategy-explanation p:last-child {
+            line-height: 1.7; 
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        
+        /* ========== 按钮样式 ========== */
+        .btn-group {
+            display: flex; 
+            gap: 12px; 
+            margin-top: 24px;
+        }
+        
+        .btn {
+            flex: 1;
+            padding: 14px; 
+            border-radius: 12px; 
+            border: none; 
+            cursor: pointer;
+            font-size: 16px; 
+            font-weight: 700; 
+            transition: all var(--transition-normal);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .btn-primary { 
+            background: var(--primary-gradient);
+            color: white;
+            box-shadow: var(--shadow-md);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.5);
+        }
+        
+        .btn-secondary { 
+            background: rgba(255, 255, 255, 0.1); 
+            color: white; 
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+        
+        /* ========== 图例 ========== */
+        .legend {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 16px;
+            font-size: 12px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .legend-color.pair {
+            background: linear-gradient(135deg, rgba(231, 76, 60, 0.5), rgba(192, 57, 43, 0.5));
+        }
+        
+        .legend-color.suited {
+            background: linear-gradient(135deg, rgba(52, 152, 219, 0.5), rgba(41, 128, 185, 0.5));
+        }
+        
+        .legend-color.offsuit {
+            background: linear-gradient(135deg, rgba(149, 165, 166, 0.5), rgba(127, 140, 141, 0.5));
+        }
+        
+        /* ========== 响应式设计 ========== */
+        @media (max-width: 768px) {
+            header h1 { font-size: 32px; }
+            .glass-card { padding: 20px; }
+            .recommendation { flex-direction: column; }
+            .result-info-grid { grid-template-columns: 1fr; }
+            .hand-matrix { grid-template-columns: repeat(13, 1fr); gap: 3px; }
+            .hand-cell { font-size: 11px; }
+        }
+        
+        /* ========== 辅助类 ========== */
+        .text-center { text-align: center; }
+        .mb-2 { margin-bottom: 8px; }
+        .mb-3 { margin-bottom: 12px; }
+        .mb-4 { margin-bottom: 16px; }
+        .mt-2 { margin-top: 8px; }
+        .mt-3 { margin-top: 12px; }
+        .mt-4 { margin-top: 16px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎲 德州扑克 GTO 助手</h1>
+            <p>Premium Edition - 专业级策略分析工具</p>
+        </header>
+        
+        <div class="main-grid">
+            <!-- 扑克桌区域 -->
+            <div class="table-area glass-card">
+                <div class="poker-table" id="pokerTable">
+                    <div id="seatsContainer"></div>
+                </div>
+            </div>
+            
+            <!-- 控制面板 -->
+            <div class="control-panel">
+                <!-- 游戏设置 -->
+                <div class="glass-card panel-section">
+                    <h3>1️⃣ 游戏设置</h3>
+                    <div class="player-count-selector">
+                        <button class="player-count-btn" onclick="setPlayerCount(4)">4</button>
+                        <button class="player-count-btn" onclick="setPlayerCount(5)">5</button>
+                        <button class="player-count-btn active" onclick="setPlayerCount(6)">6</button>
+                        <button class="player-count-btn" onclick="setPlayerCount(7)">7</button>
+                        <button class="player-count-btn" onclick="setPlayerCount(8)">8</button>
+                        <button class="player-count-btn" onclick="setPlayerCount(9)">9</button>
+                        <button class="player-count-btn" onclick="setPlayerCount(10)">10</button>
+                    </div>
+                    <div class="stack-input-row">
+                        <label>你的后手:</label>
+                        <input type="number" class="stack-input" id="myStack" value="100" min="10" step="10">
+                        <span style="font-size: 13px; color: rgba(255, 255, 255, 0.7); font-weight: 500;">BB</span>
+                    </div>
+                </div>
+                
+                <!-- 手牌选择 -->
+                <div class="glass-card panel-section">
+                    <h3>2️⃣ 选择你的手牌</h3>
+                    <div class="hand-display" onclick="openHandSelector()" id="handDisplay">
+                        <span class="hand-notation empty">点击选择手牌 (如 AKs, QQ, 87o...)</span>
+                    </div>
+                </div>
+                
+                <!-- 位置选择 -->
+                <div class="glass-card panel-section">
+                    <h3>3️⃣ 点击牌桌选择位置</h3>
+                    <p style="font-size: 14px; color: rgba(255, 255, 255, 0.8); font-weight: 500;">
+                        你的位置: <span id="myPositionText" style="color: #ffd700; font-weight: 700;">未选择</span>
+                    </p>
+                </div>
+                
+                <!-- 行动记录 -->
+                <div class="glass-card panel-section">
+                    <h3>4️⃣ 记录前置行动</h3>
+                    <div class="action-recorder" id="actionRecorder">
+                        <p style="opacity: 0.6; font-size: 13px; text-align: center; padding: 20px;">请先选择你的位置</p>
+                    </div>
+                    <div class="pot-summary" id="potSummary" style="display:none;">
+                        <div>
+                            <strong>当前底池:</strong> 
+                            <span id="currentPot">-</span>
+                        </div>
+                        <div>
+                            <strong>需要跟注:</strong> 
+                            <span id="toCall">-</span>
+                        </div>
+                        <div>
+                            <strong>底池赔率:</strong> 
+                            <span id="potOdds">-</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 分析按钮 -->
+                <button class="analyze-btn" onclick="analyzeAction()">
+                    <span style="position: relative; z-index: 1;">🎯 分析当前局面</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- 结果面板 -->
+        <div class="result-panel glass-card" id="resultPanel">
+            <h3>📊 GTO 策略建议</h3>
+            
+            <div class="result-info-grid">
+                <div class="result-info-item">
+                    <strong>位置</strong>
+                    <span id="resultPosition">-</span>
+                </div>
+                <div class="result-info-item">
+                    <strong>手牌</strong>
+                    <span id="resultHand" style="font-size: 18px;">-</span>
+                </div>
+                <div class="result-info-item">
+                    <strong>后手</strong>
+                    <span id="resultStack">-</span>
+                </div>
+                <div class="result-info-item">
+                    <strong>SPR</strong>
+                    <span id="resultSPR">-</span>
+                </div>
+                <div class="result-info-item" style="grid-column: 1 / -1;">
+                    <strong>行动序列</strong>
+                    <span id="resultActions" style="font-size: 13px;">-</span>
+                </div>
+            </div>
+            
+            <div class="recommendation">
+                <div class="action-card">
+                    <div class="action-name">Fold</div>
+                    <div class="frequency" id="foldFreq">--</div>
+                </div>
+                <div class="action-card">
+                    <div class="action-name">Call</div>
+                    <div class="frequency" id="callFreq">--</div>
+                </div>
+                <div class="action-card">
+                    <div class="action-name">Raise</div>
+                    <div class="frequency" id="raiseFreq">--</div>
+                </div>
+            </div>
+            
+            <div class="strategy-explanation">
+                <p>💡 策略说明</p>
+                <p id="resultExplanation">等待分析...</p>
+            </div>
+        </div>
+        
+        <!-- 手牌选择器 -->
+        <div class="hand-selector-overlay" id="handSelector">
+            <div class="hand-selector">
+                <h3>快速选择手牌</h3>
+                <div class="hand-selector-hint">
+                    点击选择手牌组合 (同花/异花/对子)
+                </div>
+                
+                <div class="hand-search">
+                    <input type="text" id="handSearchInput" placeholder="搜索手牌 (如: AK, QQ, 87s...)" oninput="filterHands(this.value)">
+                </div>
+                
+                <div class="hand-matrix" id="handMatrix"></div>
+                
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color pair"></div>
+                        <span>对子 (AA-22)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color suited"></div>
+                        <span>同花 (s)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color offsuit"></div>
+                        <span>异花 (o)</span>
+                    </div>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="closeHandSelector()">取消</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // ========== 全局状态 ==========
+        let currentPlayerCount = 6;
+        let currentSeat = null;
+        let selectedHand = null; // 存储选中的手牌标记法 (如 'AKs', 'QQ', '87o')
+        let playerActions = {};
+        let myStack = 100;
+        
+        const positionNamesMap = {
+            4: ['BTN', 'SB', 'BB', 'CO'],
+            5: ['BTN', 'SB', 'BB', 'UTG', 'CO'],
+            6: ['BTN', 'SB', 'BB', 'UTG', 'MP', 'CO'],
+            7: ['BTN', 'SB', 'BB', 'UTG', 'UTG+1', 'MP', 'CO'],
+            8: ['BTN', 'SB', 'BB', 'UTG', 'UTG+1', 'MP', 'MP+1', 'CO'],
+            9: ['BTN', 'SB', 'BB', 'UTG', 'UTG+1', 'UTG+2', 'MP', 'MP+1', 'CO'],
+            10: ['BTN', 'SB', 'BB', 'UTG', 'UTG+1', 'UTG+2', 'MP', 'MP+1', 'MP+2', 'CO']
+        };
+        
+        const ranks = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'];
+        
+        // ========== 生成手牌矩阵 ==========
+        function generateHandMatrix() {
+            const matrix = document.getElementById('handMatrix');
+            matrix.innerHTML = '';
+            
+            for (let i = 0; i < ranks.length; i++) {
+                for (let j = 0; j < ranks.length; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'hand-cell';
+                    
+                    const rank1 = ranks[i];
+                    const rank2 = ranks[j];
+                    
+                    let notation = '';
+                    let cellClass = '';
+                    
+                    if (i === j) {
+                        // 对子
+                        notation = rank1 + rank2;
+                        cellClass = 'pair';
+                    } else if (i < j) {
+                        // 同花 (左上)
+                        notation = rank1 + rank2 + 's';
+                        cellClass = 'suited';
+                    } else {
+                        // 异花 (右下)
+                        notation = rank2 + rank1 + 'o';
+                        cellClass = 'offsuit';
+                    }
+                    
+                    cell.classList.add(cellClass);
+                    cell.innerHTML = `<span class="hand-cell-label">${notation}</span>`;
+                    cell.dataset.notation = notation;
+                    cell.onclick = () => selectHandFromMatrix(notation);
+                    
+                    matrix.appendChild(cell);
+                }
+            }
+        }
+        
+        // ========== 选择手牌 ==========
+        function selectHandFromMatrix(notation) {
+            selectedHand = notation;
+            
+            // 更新显示
+            const handDisplay = document.getElementById('handDisplay');
+            handDisplay.innerHTML = `<span class="hand-notation">${notation}</span>`;
+            handDisplay.classList.add('selected');
+            
+            // 高亮选中的格子
+            document.querySelectorAll('.hand-cell').forEach(cell => {
+                if (cell.dataset.notation === notation) {
+                    cell.classList.add('selected');
+                } else {
+                    cell.classList.remove('selected');
+                }
+            });
+            
+            // 关闭选择器
+            closeHandSelector();
+        }
+        
+        // ========== 搜索过滤 ==========
+        function filterHands(query) {
+            query = query.toUpperCase().trim();
+            
+            document.querySelectorAll('.hand-cell').forEach(cell => {
+                const notation = cell.dataset.notation;
+                if (notation.includes(query) || query === '') {
+                    cell.style.display = 'flex';
+                } else {
+                    cell.style.display = 'none';
+                }
+            });
+        }
+        
+        // ========== 打开/关闭手牌选择器 ==========
+        function openHandSelector() {
+            generateHandMatrix();
+            document.getElementById('handSelector').classList.add('active');
+            document.getElementById('handSearchInput').value = '';
+            document.getElementById('handSearchInput').focus();
+        }
+        
+        function closeHandSelector() {
+            document.getElementById('handSelector').classList.remove('active');
+        }
+        
+        // ========== 底池计算 ==========
+        function calculatePot() {
+            const positions = positionNamesMap[currentPlayerCount];
+            const myPos = positions[currentSeat];
+            
+            let pot = 1.5;
+            let maxBet = 1;
+            let myCurrentBet = myPos === 'BB' ? 1 : (myPos === 'SB' ? 0.5 : 0);
+            
+            for (const pos of positions) {
+                if (pos === myPos) break;
+                
+                const action = playerActions[pos];
+                if (action) {
+                    if (action.action === 'raise') {
+                        pot += action.size;
+                        maxBet = action.size;
+                    } else if (action.action === 'call') {
+                        pot += maxBet;
+                    }
+                }
+            }
+            
+            const toCall = Math.max(0, maxBet - myCurrentBet);
+            const potOdds = toCall > 0 ? (toCall / (pot + toCall) * 100).toFixed(1) + '%' : 'N/A';
+            
+            return { pot, toCall, potOdds, maxBet };
+        }
+        
+        // ========== SPR计算 ==========
+        function calculateSPR(effectiveStack, potSize) {
+            return potSize > 0 ? (effectiveStack / potSize).toFixed(1) : 'N/A';
+        }
+        
+        // ========== 手牌强度评估 ==========
+        function getHandStrength(notation) {
+            const premiumHands = ['AA', 'KK', 'QQ', 'AKs', 'AKo'];
+            const strongHands = ['JJ', 'TT', 'AQs', 'AQo', 'AJs', 'KQs'];
+            const playableHands = ['99', '88', '77', 'ATs', 'AJo', 'KJs', 'QJs', 'JTs'];
+            
+            if (premiumHands.includes(notation)) return 95;
+            if (strongHands.includes(notation)) return 80;
+            if (playableHands.includes(notation)) return 65;
+            return 40;
+        }
+        
+        function hasPositionAdvantage(myPos, raiserPos) {
+            const order = ['SB', 'BB', 'UTG', 'UTG+1', 'UTG+2', 'MP', 'MP+1', 'MP+2', 'CO', 'BTN'];
+            return order.indexOf(myPos) > order.indexOf(raiserPos);
+        }
+        
+        // ========== 策略计算 ==========
+        function calculateStrategy(notation, myPos, raiserPos, raiseSize, stack, pot, spr, callers) {
+            console.log(`=== 策略计算 ===`);
+            console.log(`手牌: ${notation}, 位置: ${myPos}, 对手: ${raiserPos}`);
+            console.log(`加注: ${raiseSize}BB, 后手: ${stack}BB, 底池: ${pot}BB, SPR: ${spr}`);
+            console.log(`跟注者: ${callers}人`);
+            
+            const handStrength = getHandStrength(notation);
+            const positionAdvantage = hasPositionAdvantage(myPos, raiserPos);
+            
+            let sizeMultiplier = 1.0;
+            if (raiseSize <= 3) sizeMultiplier = 1.0;
+            else if (raiseSize <= 5) sizeMultiplier = 0.7;
+            else if (raiseSize <= 8) sizeMultiplier = 0.45;
+            else if (raiseSize <= 15) sizeMultiplier = 0.2;
+            else sizeMultiplier = 0.05;
+            
+            let sprMultiplier = 1.0;
+            if (spr < 3) {
+                sprMultiplier = 1.2;
+            } else if (spr > 10) {
+                sprMultiplier = 1.1;
+            }
+            
+            let multipotMultiplier = 1.0;
+            if (callers >= 1) {
+                multipotMultiplier = 0.7;
+            }
+            if (callers >= 2) {
+                multipotMultiplier = 0.5;
+            }
+            
+            let baseCall = 0, baseRaise = 0;
+            
+            if (handStrength >= 90) {
+                baseRaise = 80;
+                baseCall = 20;
+            } else if (handStrength >= 75) {
+                baseRaise = positionAdvantage ? 40 : 30;
+                baseCall = positionAdvantage ? 50 : 50;
+            } else if (handStrength >= 60) {
+                baseRaise = positionAdvantage ? 15 : 10;
+                baseCall = positionAdvantage ? 65 : 40;
+            } else if (handStrength >= 40) {
+                baseRaise = positionAdvantage ? 5 : 0;
+                baseCall = positionAdvantage ? 30 : 15;
+            } else {
+                baseRaise = 0;
+                baseCall = 0;
+            }
+            
+            const totalMultiplier = sizeMultiplier * sprMultiplier * multipotMultiplier;
+            let call = Math.round(baseCall * totalMultiplier);
+            let raise = Math.round(baseRaise * totalMultiplier);
+            let fold = Math.max(0, 100 - call - raise);
+            
+            console.log(`调整系数: size=${sizeMultiplier}, spr=${sprMultiplier}, multi=${multipotMultiplier}, total=${totalMultiplier.toFixed(2)}`);
+            console.log(`最终策略: Call ${call}%, Raise ${raise}%, Fold ${fold}%`);
+            
+            return { call, raise, fold };
+        }
+        
+        // ========== UI逻辑 ==========
+        function setPlayerCount(count) {
+            currentPlayerCount = count;
+            currentSeat = null;
+            playerActions = {};
+            
+            document.querySelectorAll('.player-count-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.textContent === count.toString()) btn.classList.add('active');
+            });
+            
+            renderSeats();
+            updateActionRecorder();
+        }
+        
+        function renderSeats() {
+            const container = document.getElementById('seatsContainer');
+            container.innerHTML = '';
+            
+            const positions = positionNamesMap[currentPlayerCount];
+            const centerX = 50, centerY = 50, radiusX = 42, radiusY = 38;
+            
+            for (let i = 0; i < currentPlayerCount; i++) {
+                const seat = document.createElement('div');
+                seat.className = 'seat';
+                
+                const angle = (i / currentPlayerCount) * 2 * Math.PI - Math.PI / 2;
+                seat.style.left = (centerX + radiusX * Math.cos(angle)) + '%';
+                seat.style.top = (centerY + radiusY * Math.sin(angle)) + '%';
+                seat.style.transform = 'translate(-50%, -50%)';
+                
+                const posName = positions[i];
+                const action = playerActions[posName];
+                let actionText = action ? 
+                    (action.action === 'raise' ? `Raise ${action.size}BB` :
+                     action.action === 'call' ? 'Call' : 'Fold') : '-';
+                
+                seat.innerHTML = `
+                    <div class="seat-content" onclick="selectSeat(${i})">
+                        <div class="seat-position">${posName}</div>
+                        <div class="seat-action">${actionText}</div>
+                    </div>
+                `;
+                
+                if (action && action.action !== 'fold') seat.classList.add('has-action');
+                container.appendChild(seat);
+            }
+            
+            if (currentSeat !== null) {
+                document.querySelectorAll('.seat')[currentSeat].classList.add('active');
+            }
+        }
+        
+        function selectSeat(index) {
+            document.querySelectorAll('.seat').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.seat')[index].classList.add('active');
+            
+            currentSeat = index;
+            document.getElementById('myPositionText').textContent = positionNamesMap[currentPlayerCount][index];
+            updateActionRecorder();
+        }
+        
+        function updateActionRecorder() {
+            const recorder = document.getElementById('actionRecorder');
+            if (currentSeat === null) {
+                recorder.innerHTML = '<p style="opacity: 0.6; font-size: 13px; text-align: center; padding: 20px;">请先选择你的位置</p>';
+                document.getElementById('potSummary').style.display = 'none';
+                return;
+            }
+            
+            const positions = positionNamesMap[currentPlayerCount];
+            const myPos = positions[currentSeat];
+            const positionOrder = ['UTG', 'UTG+1', 'UTG+2', 'MP', 'MP+1', 'MP+2', 'CO', 'BTN', 'SB', 'BB'];
+            const myPosIndex = positionOrder.indexOf(myPos);
+            
+            const prePositions = positionOrder.filter(pos => 
+                positions.includes(pos) && positionOrder.indexOf(pos) < myPosIndex
+            );
+            
+            recorder.innerHTML = '';
+            if (prePositions.length === 0) {
+                recorder.innerHTML = '<p style="opacity: 0.6; font-size: 13px; text-align: center; padding: 20px;">你是第一个行动的位置</p>';
+                document.getElementById('potSummary').style.display = 'none';
+                return;
+            }
+            
+            prePositions.forEach(pos => {
+                const action = playerActions[pos] || { action: '', size: 3 };
+                const row = document.createElement('div');
+                row.className = 'action-row';
+                row.innerHTML = `
+                    <div class="position-label">${pos}</div>
+                    <div class="action-buttons">
+                        <button class="action-btn fold-btn ${action.action === 'fold' ? 'active' : ''}" 
+                                onclick="setAction('${pos}', 'fold')">Fold</button>
+                        <button class="action-btn call-btn ${action.action === 'call' ? 'active' : ''}" 
+                                onclick="setAction('${pos}', 'call')">Call</button>
+                        <button class="action-btn raise-btn ${action.action === 'raise' ? 'active' : ''}" 
+                                onclick="setAction('${pos}', 'raise')">Raise</button>
+                        <input type="number" class="raise-input" value="${action.size || 3}" min="2" step="0.5"
+                               onchange="setRaiseSize('${pos}', this.value)" 
+                               ${action.action === 'raise' ? '' : 'disabled'}>
+                        <span style="font-size: 11px; color: rgba(255, 255, 255, 0.6);">BB</span>
+                    </div>
+                `;
+                recorder.appendChild(row);
+            });
+            
+            const potInfo = calculatePot();
+            document.getElementById('currentPot').textContent = potInfo.pot.toFixed(1) + ' BB';
+            document.getElementById('toCall').textContent = potInfo.toCall.toFixed(1) + ' BB';
+            document.getElementById('potOdds').textContent = potInfo.potOdds;
+            document.getElementById('potSummary').style.display = 'block';
+        }
+        
+        function setAction(pos, action) {
+            if (!playerActions[pos]) playerActions[pos] = { size: 3 };
+            playerActions[pos].action = action;
+            updateActionRecorder();
+            renderSeats();
+        }
+        
+        function setRaiseSize(pos, size) {
+            if (!playerActions[pos]) playerActions[pos] = { action: 'raise' };
+            playerActions[pos].size = parseFloat(size);
+            updateActionRecorder();
+            renderSeats();
+        }
+        
+        function analyzeAction() {
+            if (!selectedHand) {
+                alert('请先选择你的手牌');
+                return;
+            }
+            if (currentSeat === null) {
+                alert('请选择你的位置');
+                return;
+            }
+            
+            myStack = parseFloat(document.getElementById('myStack').value);
+            
+            const positions = positionNamesMap[currentPlayerCount];
+            const myPos = positions[currentSeat];
+            
+            const positionOrder = ['UTG', 'UTG+1', 'UTG+2', 'MP', 'MP+1', 'MP+2', 'CO', 'BTN', 'SB', 'BB'];
+            const actionSeq = [];
+            let lastRaiser = null;
+            let raiseSize = 0;
+            let callers = 0;
+            
+            for (const pos of positionOrder) {
+                if (!positions.includes(pos) || pos === myPos) break;
+                
+                const action = playerActions[pos];
+                if (action && action.action === 'raise') {
+                    actionSeq.push(`${pos} Raise ${action.size}BB`);
+                    lastRaiser = pos;
+                    raiseSize = action.size;
+                    callers = 0;
+                } else if (action && action.action === 'call') {
+                    actionSeq.push(`${pos} Call`);
+                    callers++;
+                }
+            }
+            
+            const potInfo = calculatePot();
+            const spr = calculateSPR(myStack, potInfo.pot);
+            
+            let strategy;
+            if (lastRaiser) {
+                strategy = calculateStrategy(selectedHand, myPos, lastRaiser, raiseSize, myStack, potInfo.pot, parseFloat(spr), callers);
+            } else {
+                strategy = { fold: 50, call: 20, raise: 30 };
+            }
+            
+            document.getElementById('resultPosition').textContent = `${myPos} (${currentPlayerCount}人桌)`;
+            document.getElementById('resultHand').textContent = selectedHand;
+            document.getElementById('resultStack').textContent = myStack + ' BB';
+            document.getElementById('resultActions').textContent = actionSeq.length > 0 ? 
+                actionSeq.join(' → ') : '前面全弃牌 (Open场景)';
+            document.getElementById('resultSPR').textContent = spr;
+            
+            document.getElementById('foldFreq').textContent = (strategy.fold || 0) + '%';
+            document.getElementById('callFreq').textContent = (strategy.call || 0) + '%';
+            document.getElementById('raiseFreq').textContent = (strategy.raise || 0) + '%';
+            
+            const actionCards = document.querySelectorAll('.action-card');
+            actionCards.forEach(card => card.classList.remove('primary'));
+            
+            const maxFreq = Math.max(strategy.fold || 0, strategy.call || 0, strategy.raise || 0);
+            if (maxFreq === (strategy.fold || 0)) actionCards[0].classList.add('primary');
+            else if (maxFreq === (strategy.call || 0)) actionCards[1].classList.add('primary');
+            else actionCards[2].classList.add('primary');
+            
+            let advice = '';
+            if (lastRaiser) {
+                advice = `面对 ${lastRaiser} 的加注 ${raiseSize}BB (底池 ${potInfo.pot.toFixed(1)}BB, 需跟 ${potInfo.toCall.toFixed(1)}BB, SPR=${spr}), `;
+                
+                if (callers > 0) advice += `已有 ${callers} 人跟注 (多人底池), `;
+                
+                if (parseFloat(spr) < 3) advice += `浅筹码场景,应更激进。`;
+                else if (parseFloat(spr) > 10) advice += `深筹码场景,可考虑投机牌。`;
+                else advice += `标准筹码深度。`;
+                
+                advice += ` ${selectedHand} 在 ${myPos} 位置`;
+                if (strategy.raise >= 50) advice += `建议 Raise 为主 (${strategy.raise}%)`;
+                else if (strategy.call >= 50) advice += `建议 Call 为主 (${strategy.call}%)`;
+                else advice += `建议 Fold 为主 (${strategy.fold}%)`;
+            } else {
+                advice = `前面无人加注 (Open场景), SPR=${spr}。`;
+            }
+            
+            document.getElementById('resultExplanation').textContent = advice;
+            document.getElementById('resultPanel').classList.add('show');
+            
+            setTimeout(() => {
+                document.getElementById('resultPanel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 100);
+        }
+        
+        document.getElementById('myStack').addEventListener('change', function() {
+            myStack = parseFloat(this.value);
+            updateActionRecorder();
+        });
+        
+        renderSeats();
+    </script>
+</body>
+</html>
